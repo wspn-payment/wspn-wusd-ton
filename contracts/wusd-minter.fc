@@ -88,11 +88,14 @@ global cell content;
     if (op == op::burn_notification()) {
         int jetton_amount = in_msg_body~load_coins();
 
-        slice sender_address = in_msg_body~load_msg_addr();
-
-        throw_unless(73, equal_slices(sender_address, ctx_admin_address));
+        slice sender_address = cs~load_msg_addr();
+        slice from_address = in_msg_body~load_msg_addr();
+        throw_unless(74,
+            equal_slices(calculate_user_jetton_wallet_address(from_address, my_address(), jetton_wallet_code), sender_address)
+        );
         ctx_total_supply -= jetton_amount;
         save_data();
+
         slice response_address = in_msg_body~load_msg_addr();
 
         if (response_address.preload_uint(2) != 0) {

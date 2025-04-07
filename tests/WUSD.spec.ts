@@ -89,15 +89,16 @@ describe('WUSD', () => {
         const totalAfterMint = await wusd.getTotalSupply();
         console.log("totalAfterMint", totalAfterMint);
 
-        const burnResult = await wusd.sendBurn(deployer.getSender(), {
-            value: toNano('0.05'),
-            jettonValue: toNano(3),
-            toAddress: Address.parse("EQALw-sfsYmipJXZEKEx05tJn5NJD5ZLxwo8Gv8IVde2OOC2"),
-            respAddress: Address.parse("EQALw-sfsYmipJXZEKEx05tJn5NJD5ZLxwo8Gv8IVde2OOC2")
-        })
-
-        const totalAfterBurn = await wusd.getTotalSupply();
-        console.log("totalAfterBurn", totalAfterBurn);
+        // const burnResult = await wusd.sendBurn(deployer.getSender(), {
+        //     value: toNano('0.05'),
+        //     jettonValue: toNano(3),
+        //     toAddress: Address.parse("EQALw-sfsYmipJXZEKEx05tJn5NJD5ZLxwo8Gv8IVde2OOC2"),
+        //     respAddress: Address.parse("EQALw-sfsYmipJXZEKEx05tJn5NJD5ZLxwo8Gv8IVde2OOC2")
+        // })
+        //
+        // const totalAfterBurn = await wusd.getTotalSupply();
+        //
+        // console.log("totalAfterBurn", totalAfterBurn);
 
     });
 
@@ -638,6 +639,7 @@ describe('WUSD', () => {
         });
 
         const totalSupply = await wusd.getTotalSupply();
+        console.log(totalSupply)
         expect(await deployerJettonWallet.getJettonBalance()).toEqual(initialJettonBalance - burnAmount);
         expect(BigInt(totalSupply)).toEqual(BigInt(initialTotalSupply) - burnAmount);
 

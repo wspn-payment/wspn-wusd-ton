@@ -166,7 +166,6 @@ const gas_consumption = 10000000; ;; 0.01 TON
     throw_unless(706, balance >= 0);
     throw_unless(707, msg_value > fwd_fee + 2 * gas_consumption);
 
-
     var msg_body = begin_cell()
         .store_uint(op::burn_notification(), 32)
         .store_uint(query_id, 64)

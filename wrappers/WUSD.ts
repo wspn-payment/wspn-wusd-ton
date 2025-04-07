@@ -40,7 +40,7 @@ export function jettonContentToCell(content: JettonMinterContent) {
 
 export const Opcodes = {
     mint: 21,
-    burn: 0x7bdd97de,
+    burn: 0x595f07bc,
     providerWalletAddress: 0x2c76b973,
     updateAdminAddress: 3,
     internalTransfer: 0x178d4519,
