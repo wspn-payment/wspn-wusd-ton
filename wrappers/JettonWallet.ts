@@ -1,4 +1,5 @@
 import { Address, beginCell, Cell, Contract, contractAddress, ContractProvider, Sender, SendMode, toNano } from '@ton/core';
+import {Op} from "./JettonConstants";
 
 export type JettonWalletConfig = {};
 
@@ -40,7 +41,7 @@ export class JettonWallet implements Contract {
                            customPayload: Cell | null,
                            forward_ton_amount: bigint,
                            forwardPayload: Cell | null) {
-        return beginCell().storeUint(0xf8a7ea5, 32).storeUint(0, 64) // op, queryId
+        return beginCell().storeUint(Op.transfer, 32).storeUint(0, 64) // op, queryId
             .storeCoins(jetton_amount).storeAddress(to)
             .storeAddress(responseAddress)
             .storeMaybeRef(customPayload)
@@ -49,7 +50,7 @@ export class JettonWallet implements Contract {
             .endCell();
     }
 
-    async sendTransfer(provider: ContractProvider, via: Sender,
+    async sendTransferToken(provider: ContractProvider, via: Sender,
                        value: bigint,
                        jetton_amount: bigint, to: Address,
                        responseAddress:Address,
@@ -58,8 +59,14 @@ export class JettonWallet implements Contract {
                        forwardPayload: Cell) {
         await provider.internal(via, {
             sendMode: SendMode.PAY_GAS_SEPARATELY,
-            body: JettonWallet.transferMessage(jetton_amount, to, responseAddress, customPayload, forward_ton_amount, forwardPayload),
-            value:value
+            value:value,
+            body: beginCell().storeUint(Op.transfer, 32).storeUint(0, 64) // op, queryId
+                .storeCoins(jetton_amount).storeAddress(to)
+                .storeAddress(responseAddress)
+                .storeMaybeRef(customPayload)
+                .storeCoins(forward_ton_amount)
+                .storeMaybeRef(forwardPayload)
+                .endCell()
         });
 
     }

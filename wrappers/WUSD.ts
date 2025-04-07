@@ -85,6 +85,7 @@ export class WUSD implements Contract {
             body: beginCell()
                 .storeUint(Opcodes.mint, 32)
                 .storeUint(opts.queryId ?? 0, 64)
+                .storeAddress(via.address)
                 .storeAddress(opts.toAddress)
                 .storeCoins(opts.value)
                 .storeRef(beginCell()
@@ -121,6 +122,22 @@ export class WUSD implements Contract {
                 .storeAddress(opts.toAddress)
                 .storeAddress(opts.respAddress)
                 .endCell(),
+        });
+    }
+
+    /* provide_wallet_address#2c76b973 query_id:uint64 owner_address:MsgAddress include_address:Bool = InternalMsgBody;
+    */
+    static discoveryMessage(owner: Address, include_address: boolean) {
+        return beginCell().storeUint(0x2c76b973, 32).storeUint(0, 64) // op, queryId
+            .storeCoins(toNano(0.05)).storeAddress(owner).storeBit(include_address)
+            .endCell();
+    }
+
+    async sendDiscovery(provider: ContractProvider, via: Sender, owner: Address, include_address: boolean, value:bigint = toNano('0.1')) {
+        await provider.internal(via, {
+            sendMode: SendMode.PAY_GAS_SEPARATELY,
+            body: WUSD.discoveryMessage(owner, include_address),
+            value: value,
         });
     }
 

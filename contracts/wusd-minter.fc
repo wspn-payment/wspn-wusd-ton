@@ -70,9 +70,9 @@ global cell content;
 
     int op = in_msg_body~load_uint(32); ;; by convention, the first 32 bits of incoming message is the op
     int query_id = in_msg_body~load_uint(64); ;; also by convention, the next 64 bits contain the "query id", although this is not always the case
-
     if (op == op::mint()) {
-        ;; throw_unless(73, equal_slices(sender_address, admin_address));
+        slice sender_address = in_msg_body~load_msg_addr();
+        throw_unless(73, equal_slices(sender_address, ctx_admin_address));
         slice to_address = in_msg_body~load_msg_addr();
         int amount = in_msg_body~load_coins();
         cell master_msg = in_msg_body~load_ref();
@@ -87,13 +87,14 @@ global cell content;
 
     if (op == op::burn_notification()) {
         int jetton_amount = in_msg_body~load_coins();
-        slice from_address = in_msg_body~load_msg_addr();
-        ;; throw_unless(74,
-        ;;     equal_slices(calculate_user_jetton_wallet_address(from_address, my_address(), jetton_wallet_code), sender_address)
-        ;; );
+
+        slice sender_address = in_msg_body~load_msg_addr();
+
+        throw_unless(73, equal_slices(sender_address, ctx_admin_address));
         ctx_total_supply -= jetton_amount;
         save_data();
         slice response_address = in_msg_body~load_msg_addr();
+
         if (response_address.preload_uint(2) != 0) {
             var msg = begin_cell()
                 .store_uint(0x10, 6) ;; nobounce - int_msg_info$0 ihr_disabled:Bool bounce:Bool bounced:Bool src:MsgAddress -> 011000
@@ -108,7 +109,10 @@ global cell content;
     }
 
     if (op == op::provide_wallet_address()) {
-        ;; throw_unless(75, msg_value > fwd_fee + const::provide_address_gas_consumption());
+        int fwd_fee = in_msg_body~load_coins();
+        slice sender_address = cs~load_msg_addr();
+
+        throw_unless(75, msg_value > fwd_fee + provide_address_gas_consumption());
 
         slice owner_address = in_msg_body~load_msg_addr();
         int include_address? = in_msg_body~load_uint(1);
@@ -116,7 +120,6 @@ global cell content;
         cell included_address = include_address?
         ? begin_cell().store_slice(owner_address).end_cell()
         : null();
-        slice sender_address = in_msg_body~load_msg_addr();
 
         var msg = begin_cell()
             .store_uint(0x18, 6)
