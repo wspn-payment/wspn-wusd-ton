@@ -13,6 +13,7 @@ export abstract class Op {
     static change_content = 4;
     static change_minter = 0xc9e8a8d0;
     static change_burner = 0x96d0ae07;
+    static salvage = 0xa33fe996;
 }
 
 export abstract class Errors {

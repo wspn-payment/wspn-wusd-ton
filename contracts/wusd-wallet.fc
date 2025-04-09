@@ -158,7 +158,6 @@ const gas_consumption = 10000000; ;; 0.01 TON
     int query_id = in_msg_body~load_uint(64);
     int jetton_amount = in_msg_body~load_coins();
     balance -= jetton_amount;
-    slice from_address = in_msg_body~load_msg_addr();
 
     slice response_address = in_msg_body~load_msg_addr();
     throw_unless(707, equal_slices(jetton_master_address, sender_address));

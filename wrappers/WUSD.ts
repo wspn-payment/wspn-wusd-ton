@@ -112,7 +112,6 @@ export class WUSD implements Contract {
             value: bigint;
             queryId?: number;
             jettonValue: bigint;
-            toAddress: Address;
             respAddress: Address;
         }
     ) {
@@ -122,13 +121,42 @@ export class WUSD implements Contract {
             body: beginCell()
                 .storeUint(Opcodes.burn, 32)
                 .storeUint(opts.queryId ?? 0, 64)
+                .storeCoins(opts.value)
+                .storeRef(beginCell()
+                    .storeUint(Op.burn_notification, 32)
+                    .storeUint(opts.queryId ?? 0, 64)
+                    .storeCoins(opts.jettonValue)
+                    .storeAddress(opts.respAddress)
+                    .storeCoins(0)
+                    .endCell()
+                )
+                .endCell(),
+        });
+    }
+
+    async sendSalvage(
+        provider: ContractProvider,
+        via: Sender,
+        opts: {
+            value: bigint;
+            queryId?: number;
+            jettonValue: bigint;
+            toAddress: Address;
+            respAddress: Address;
+        }
+    ){
+        await provider.internal(via, {
+            value: opts.value,
+            sendMode: SendMode.PAY_GAS_SEPARATELY,
+            body: beginCell()
+                .storeUint(Op.salvage, 32)
+                .storeUint(opts.queryId ?? 0, 64)
                 .storeAddress(opts.toAddress)
                 .storeCoins(opts.value)
                 .storeRef(beginCell()
                     .storeUint(Op.burn_notification, 32)
                     .storeUint(opts.queryId ?? 0, 64)
                     .storeCoins(opts.jettonValue)
-                    .storeAddress(opts.toAddress)
                     .storeAddress(opts.respAddress)
                     .storeCoins(0)
                     .endCell()

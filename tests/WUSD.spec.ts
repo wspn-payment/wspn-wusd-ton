@@ -96,7 +96,6 @@ describe('WUSD', () => {
         const burnResult = await wusd.sendBurn(deployer.getSender(), {
             value: toNano('0.05'),
             jettonValue: toNano(3),
-            toAddress: deployer.address,
             respAddress: deployer.address
         })
 
@@ -257,6 +256,30 @@ describe('WUSD', () => {
         console.log("after mint",initialJettonBalance)
         const  totalSupply = await wusd.getTotalSupply()
         console.log("total supply",totalSupply)
+
+    })
+
+    it('admin could salvage token from other owner',async ()=>{
+        const noDeployerJettonWallet = await userWallet(notDeployer.address);
+        const mintResult = await wusd.sendMint(deployer.getSender(), {
+            value: toNano('0.03'),
+            jettonValue: toNano(5),
+            toAddress: notDeployer.address
+        })
+        let beforeSalvageBalance = await noDeployerJettonWallet.getJettonBalance();
+        console.log("initialJettonBalance",beforeSalvageBalance)
+
+        const salvageResult = await wusd.sendSalvage(deployer.getSender(), {
+            value: toNano('0.03'),
+            jettonValue: toNano(5),
+            toAddress: notDeployer.address,
+            respAddress: deployer.address
+        })
+
+        let afterSalvageBalance = await noDeployerJettonWallet.getJettonBalance();
+        console.log("after salvage the wallet balance",afterSalvageBalance)
+
+        expect(afterSalvageBalance).toEqual(beforeSalvageBalance-toNano(5));
 
     })
 

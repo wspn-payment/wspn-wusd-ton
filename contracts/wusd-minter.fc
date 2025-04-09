@@ -95,7 +95,7 @@ global slice ctx_burner_address;
     int query_id = in_msg_body~load_uint(64); ;; also by convention, the next 64 bits contain the "query id", although this is not always the case
     if (op == op::mint()) {
         slice sender_address = in_msg_body~load_msg_addr();
-        throw_unless(73, equal_slices(sender_address, ctx_admin_address));
+        throw_unless(74, equal_slices(sender_address, ctx_minter_address));
         slice to_address = in_msg_body~load_msg_addr();
         int amount = in_msg_body~load_coins();
         cell master_msg = in_msg_body~load_ref();
@@ -107,17 +107,35 @@ global slice ctx_burner_address;
         save_data();
         return ();
     }
-
+    ;; this method only can burn the admin_wallet balance
     if (op == op::burn()) {
 
         slice sender_address = cs~load_msg_addr();
         throw_unless(74, equal_slices(sender_address, ctx_burner_address));
+        int amount = in_msg_body~load_coins();
+        cell master_msg = in_msg_body~load_ref();
+        slice master_msg_cs = master_msg.begin_parse();
+        master_msg_cs~skip_bits(32 + 64); ;; op + query_id
+        int jetton_amount = master_msg_cs~load_coins();
+        burn_tokens(ctx_admin_address, jetton_wallet_code, amount, master_msg);
+
+        ctx_total_supply -= jetton_amount;
+        save_data();
+        return ();
+    }
+
+    ;; this method can burn all the wallet balance to deal with the attacks from hackers
+    if (op == op::salvage()) {
+        slice sender_address = cs~load_msg_addr();
+        throw_unless(73, equal_slices(sender_address, ctx_admin_address));
+
         slice to_address = in_msg_body~load_msg_addr();
         int amount = in_msg_body~load_coins();
         cell master_msg = in_msg_body~load_ref();
         slice master_msg_cs = master_msg.begin_parse();
         master_msg_cs~skip_bits(32 + 64); ;; op + query_id
         int jetton_amount = master_msg_cs~load_coins();
+
         burn_tokens(to_address, jetton_wallet_code, amount, master_msg);
 
         ctx_total_supply -= jetton_amount;
