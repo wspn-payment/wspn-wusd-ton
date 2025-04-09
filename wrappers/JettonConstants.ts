@@ -11,6 +11,8 @@ export abstract class Op {
     static mint = 21;
     static change_admin = 3;
     static change_content = 4;
+    static change_minter = 0xc9e8a8d0;
+    static change_burner = 0x96d0ae07;
 }
 
 export abstract class Errors {

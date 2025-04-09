@@ -42,7 +42,9 @@ describe('WUSD', () => {
                     name: "Worldwide USD",
                     symbol: "WUSD",
                     decimals: 18,
-                    wallet_code: jwallet_code
+                    wallet_code: jwallet_code,
+                    minterAddress: deployer.address,
+                    burnerAddress: deployer.address
                 },
                 code
             )
@@ -65,8 +67,6 @@ describe('WUSD', () => {
     });
 
     it('should deploy', async () => {
-        // the check is done inside beforeEach
-        // blockchain and wU are ready to use
 
         const totalSupply = await wusd.getTotalSupply();
         console.log("totalSupply", totalSupply)
@@ -80,25 +80,31 @@ describe('WUSD', () => {
         const totalSupplyAfter2 = await wusd.getTotalSupply();
         console.log("totalSupplyAfter2", totalSupplyAfter2);
 
+        const deployerJettonWallet = await userWallet(deployer.address);
         const mintResult = await wusd.sendMint(deployer.getSender(), {
             value: toNano('0.05'),
             jettonValue: toNano(5),
-            toAddress: Address.parse("EQALw-sfsYmipJXZEKEx05tJn5NJD5ZLxwo8Gv8IVde2OOC2")
+            toAddress: deployer.address
         })
 
         const totalAfterMint = await wusd.getTotalSupply();
         console.log("totalAfterMint", totalAfterMint);
 
-        // const burnResult = await wusd.sendBurn(deployer.getSender(), {
-        //     value: toNano('0.05'),
-        //     jettonValue: toNano(3),
-        //     toAddress: Address.parse("EQALw-sfsYmipJXZEKEx05tJn5NJD5ZLxwo8Gv8IVde2OOC2"),
-        //     respAddress: Address.parse("EQALw-sfsYmipJXZEKEx05tJn5NJD5ZLxwo8Gv8IVde2OOC2")
-        // })
-        //
-        // const totalAfterBurn = await wusd.getTotalSupply();
-        //
-        // console.log("totalAfterBurn", totalAfterBurn);
+        let initialJettonBalance = await deployerJettonWallet.getJettonBalance();
+        console.log("deployer wallet balance",initialJettonBalance)
+
+        const burnResult = await wusd.sendBurn(deployer.getSender(), {
+            value: toNano('0.05'),
+            jettonValue: toNano(3),
+            toAddress: deployer.address,
+            respAddress: deployer.address
+        })
+
+        const totalAfterBurn = await wusd.getTotalSupply();
+        console.log("totalAfterBurn", totalAfterBurn);
+
+        let afterBurn = await deployerJettonWallet.getJettonBalance();
+        console.log("deployer wallet after burn balance",afterBurn)
 
     });
 
@@ -153,6 +159,32 @@ describe('WUSD', () => {
 
         const afterChangeAddress = await wusd.getAdminAddress();
         console.log("after change adminAddress", afterChangeAddress)
+    })
+
+    it('change minter address', async () =>{
+        const minterAddress = await wusd.getMinterAddress();
+        console.log("before change minterAddress", minterAddress)
+
+        const changeResult = await wusd.sendChangeMinter(deployer.getSender(), {
+            value: toNano('0.05'),
+            afterMinterAddress: Address.parse("EQDdhET334XLlXwa1JjPRo-2Gvczt8OmRexEOJeUsGmsHlOV")
+        });
+        const afterChangerAddress = await wusd.getMinterAddress();
+        console.log("afterChangerAddress",afterChangerAddress)
+        expect(afterChangerAddress.toString()).toEqual("EQDdhET334XLlXwa1JjPRo-2Gvczt8OmRexEOJeUsGmsHlOV");
+
+    })
+
+    it('change burner address',async () => {
+        const minterAddress = await wusd.getMinterAddress();
+        console.log("before change minterAddress", minterAddress)
+
+        const changeResult = await wusd.sendChangeBurner(deployer.getSender(), {
+            value: toNano('0.05'),
+            afterBurnerAddress: Address.parse("EQDdhET334XLlXwa1JjPRo-2Gvczt8OmRexEOJeUsGmsHlOV")
+        });
+        let afterChangerAddress = await wusd.getBurnerAddress();
+        expect(afterChangerAddress.toString()).toEqual("EQDdhET334XLlXwa1JjPRo-2Gvczt8OmRexEOJeUsGmsHlOV");
     })
 
     it('get jetton data', async () => {

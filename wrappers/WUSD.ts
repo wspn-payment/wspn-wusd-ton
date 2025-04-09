@@ -9,6 +9,7 @@ import {
     SendMode,
     toNano
 } from '@ton/core';
+import {Op} from "./JettonConstants";
 
 export type JettonMinterContent = {
     name: string,
@@ -23,12 +24,15 @@ export type WUConfig = {
     symbol: string;
     decimals: number;
     wallet_code: Cell;
+    minterAddress: Address;
+    burnerAddress: Address;
 };
 
 export function wUConfigToCell(config: WUConfig): Cell {
     return beginCell().storeCoins(config.totalSupply).storeAddress(config.adminAddress)
         .storeRef(beginCell().storeBuffer(Buffer.from(config.name), 13).storeBuffer(Buffer.from(config.symbol), 4).storeUint(config.decimals, 8).endCell())
-        .storeRef(config.wallet_code).endCell();
+        .storeRef(config.wallet_code).storeAddress(config.minterAddress).storeAddress(config.burnerAddress)
+        .endCell();
 }
 
 export function jettonContentToCell(content: JettonMinterContent) {
@@ -118,9 +122,17 @@ export class WUSD implements Contract {
             body: beginCell()
                 .storeUint(Opcodes.burn, 32)
                 .storeUint(opts.queryId ?? 0, 64)
-                .storeCoins(opts.jettonValue)
                 .storeAddress(opts.toAddress)
-                .storeAddress(opts.respAddress)
+                .storeCoins(opts.value)
+                .storeRef(beginCell()
+                    .storeUint(Op.burn_notification, 32)
+                    .storeUint(opts.queryId ?? 0, 64)
+                    .storeCoins(opts.jettonValue)
+                    .storeAddress(opts.toAddress)
+                    .storeAddress(opts.respAddress)
+                    .storeCoins(0)
+                    .endCell()
+                )
                 .endCell(),
         });
     }
@@ -183,11 +195,53 @@ export class WUSD implements Contract {
             body: beginCell()
                 .storeUint(Opcodes.updateAdminAddress, 32)
                 .storeUint(opts.queryId ?? 0, 64)
-                .storeAddress(via.address)
                 .storeAddress(opts.afterAdminAddress)
                 .endCell(),
         });
     }
+
+    async sendChangeMinter(
+        provider: ContractProvider,
+        via: Sender,
+        opts: {
+            value: bigint,
+            queryId?: number;
+            afterMinterAddress: Address;
+        }
+    ){
+        await provider.internal(via, {
+            value: opts.value,
+            sendMode: SendMode.PAY_GAS_SEPARATELY,
+            body: beginCell()
+                .storeUint(Op.change_minter, 32)
+                .storeUint(opts.queryId ?? 0, 64)
+                .storeAddress(opts.afterMinterAddress)
+                .endCell(),
+        });
+    }
+
+    async sendChangeBurner(
+        provider: ContractProvider,
+        via: Sender,
+        opts: {
+            value: bigint,
+            queryId?: number;
+            afterBurnerAddress: Address;
+        }
+    ){
+        await provider.internal(via, {
+            value: opts.value,
+            sendMode: SendMode.PAY_GAS_SEPARATELY,
+            body: beginCell()
+                .storeUint(Op.change_burner, 32)
+                .storeUint(opts.queryId ?? 0, 64)
+                .storeAddress(opts.afterBurnerAddress)
+                .endCell(),
+        });
+
+    }
+
+
 
     async sendChangeContent(provider: ContractProvider, via: Sender, content: Cell) {
         if (!via.address) {
@@ -234,19 +288,34 @@ export class WUSD implements Contract {
         const name = cs.loadBuffer(13).toString();
         const symbol = cs.loadBuffer(4).toString();
         const decimals = cs.loadUint(8);
+        let jettonWalletCode = res.stack.readCell();
+        let minterAddress = res.stack.readAddress();
+        let burnerAddress = res.stack.readAddress();
         return {
             totalSupply,
             adminAddress,
             name,
             symbol,
             decimals,
-            content
+            content,
+            minterAddress,
+            burnerAddress
         };
     }
 
     async getContent(provider: ContractProvider) {
         let res = await this.getJettonData(provider);
         return res.content;
+    }
+
+    async getMinterAddress(provider: ContractProvider){
+        let res = await this.getJettonData(provider);
+        return res.minterAddress;
+    }
+
+    async getBurnerAddress(provider: ContractProvider) {
+        let res = await this.getJettonData(provider);
+        return res.burnerAddress;
     }
 
 
