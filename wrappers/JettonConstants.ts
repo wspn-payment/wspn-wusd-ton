@@ -11,15 +11,20 @@ export abstract class Op {
     static mint = 21;
     static change_admin = 3;
     static change_content = 4;
-    static change_minter = 0xc9e8a8d0;
-    static change_burner = 0x96d0ae07;
-    static salvage = 0xa33fe996;
+    static grant_minter = 0xc9e8a8d0;
+    static grant_burner = 0x96d0ae07;
+    static recover = 0xa33fe996;
+    static remove_minter = 0x60b579aa;
+    static remove_burner = 0x3f8d7f7d;
+
 }
 
 export abstract class Errors {
     static invalid_op = 709;
     static not_admin  = 73;
-    static unouthorized_burn = 74;
+    static unauthorized_burn = 74;
+    static unauthorized_mint = 76;
+    static unauthorized_recover = 77;
     static discovery_fee_not_matched = 75;
     static wrong_op = 0xffff;
     static not_owner = 705;

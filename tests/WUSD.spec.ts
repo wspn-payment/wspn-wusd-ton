@@ -7,7 +7,6 @@ import {compile, sleep} from '@ton/blueprint';
 import {Errors, Op} from "../wrappers/JettonConstants";
 import {getRandomTon} from "./util";
 import {randomAddress} from "@ton/test-utils";
-import {add} from "@tact-lang/compiler/dist/grammar/grammar";
 
 let fwd_fee = 721000n, gas_consumption = 10000000n, min_tons_for_storage = 10000000n;
 
@@ -31,6 +30,7 @@ describe('WUSD', () => {
         let jwallet_code = await compile('JettonWallet');
 
         deployer = await blockchain.treasury('deployer');
+        deployer.address;
         notDeployer = await blockchain.treasury('notDeployer');
         defaultContent = jettonContentToCell({name: "Worldwide USD", symbol: "WUSD", decimals: 18});
 
@@ -141,7 +141,7 @@ describe('WUSD', () => {
     });
 
     it('get wallet address', async () => {
-        const walletAddress = await wusd.getWalletAddress(Address.parse("EQALw-sfsYmipJXZEKEx05tJn5NJD5ZLxwo8Gv8IVde2OOC2"));
+        const walletAddress = await wusd.getWalletAddress(deployer.address);
         console.log("walletAddress:", walletAddress)
     })
 
@@ -160,30 +160,157 @@ describe('WUSD', () => {
         console.log("after change adminAddress", afterChangeAddress)
     })
 
-    it('change minter address', async () =>{
-        const minterAddress = await wusd.getMinterAddress();
-        console.log("before change minterAddress", minterAddress)
+    it('only minter address can mint token', async () =>{
 
-        const changeResult = await wusd.sendChangeMinter(deployer.getSender(), {
+        const deployerJettonWallet = await userWallet(deployer.address);
+
+        let minter = await blockchain.treasury('minter');
+        const changeResult = await wusd.sendGrantMinter(deployer.getSender(), {
             value: toNano('0.05'),
-            afterMinterAddress: Address.parse("EQDdhET334XLlXwa1JjPRo-2Gvczt8OmRexEOJeUsGmsHlOV")
+            afterMinterAddress: minter.address
         });
-        const afterChangerAddress = await wusd.getMinterAddress();
-        console.log("afterChangerAddress",afterChangerAddress)
-        expect(afterChangerAddress.toString()).toEqual("EQDdhET334XLlXwa1JjPRo-2Gvczt8OmRexEOJeUsGmsHlOV");
+
+        const mintResult = await wusd.sendMint(minter.getSender(), {
+            value: toNano('0.05'),
+            jettonValue: toNano(5),
+            toAddress: deployer.address
+        })
+
+        let afterMint = await deployerJettonWallet.getJettonBalance();
+        console.log("deployer wallet after minter balance",afterMint)
 
     })
 
-    it('change burner address',async () => {
-        const minterAddress = await wusd.getMinterAddress();
-        console.log("before change minterAddress", minterAddress)
+    it('remove minter address success', async () =>{
 
-        const changeResult = await wusd.sendChangeBurner(deployer.getSender(), {
+        const deployerJettonWallet = await userWallet(deployer.address);
+
+        let minter = await blockchain.treasury('minter');
+        const changeResult = await wusd.sendGrantMinter(deployer.getSender(), {
             value: toNano('0.05'),
-            afterBurnerAddress: Address.parse("EQDdhET334XLlXwa1JjPRo-2Gvczt8OmRexEOJeUsGmsHlOV")
+            afterMinterAddress: minter.address
         });
-        let afterChangerAddress = await wusd.getBurnerAddress();
-        expect(afterChangerAddress.toString()).toEqual("EQDdhET334XLlXwa1JjPRo-2Gvczt8OmRexEOJeUsGmsHlOV");
+
+        const removeResult = await wusd.sendRemoveMinter(deployer.getSender(),{
+            value: toNano('0.05'),
+            removeMinterAddress: minter.address
+        });
+
+        expect(removeResult.transactions).toHaveTransaction({
+            from:deployer.address,
+            to:wusd.address,
+            success:true
+        })
+
+        const mintResult = await wusd.sendMint(minter.getSender(), {
+            value: toNano('0.05'),
+            jettonValue: toNano(5),
+            toAddress: deployer.address
+        })
+
+        let afterMint = await deployerJettonWallet.getJettonBalance();
+        console.log("deployer wallet after minter balance",afterMint)
+
+    })
+
+    it('remove burner address success',async () => {
+        let burner = await blockchain.treasury('burner');
+
+        const grantResult = await wusd.sendGrantBurner(deployer.getSender(), {
+            value: toNano('0.05'),
+            afterBurnerAddress: burner.address
+        });
+
+        const removeResult = await wusd.sendRemoveBurner(deployer.getSender(),{
+            value: toNano('0.05'),
+            removeBurnerAddress: burner.address
+        });
+
+        expect(removeResult.transactions).toHaveTransaction({
+            from:deployer.address,
+            to:wusd.address,
+            success:true
+        })
+
+
+
+    })
+
+    it('not burner address role can not burn token',async () => {
+        const deployerJettonWallet = await userWallet(deployer.address);
+
+        const grantResult = await wusd.sendGrantMinter(deployer.getSender(), {
+            value: toNano('0.05'),
+            afterMinterAddress: deployer.address
+        });
+
+        const mintResult = await wusd.sendMint(deployer.getSender(), {
+            value: toNano('0.05'),
+            jettonValue: toNano(5),
+            toAddress: deployer.address
+        })
+
+        let burner = await blockchain.treasury('burner');
+
+        const changeResult = await wusd.sendGrantBurner(deployer.getSender(), {
+            value: toNano('0.05'),
+            afterBurnerAddress: burner.address
+        });
+
+        const burnResult =await wusd.sendBurn(deployer.getSender(), {
+            value: toNano('0.05'),
+            jettonValue: toNano(3),
+            respAddress: deployer.address
+        });
+
+        let afterBurn = await deployerJettonWallet.getJettonBalance();
+        console.log("deployer wallet after burn balance",afterBurn)
+
+        expect(burnResult.transactions).toHaveTransaction({
+            from: deployer.address,
+            to: wusd.address,
+            aborted: true,
+            exitCode: Errors.unauthorized_burn
+        })
+
+    })
+
+    it('only burner address role can burn token',async () =>{
+
+        const deployerJettonWallet = await userWallet(deployer.address);
+        await wusd.sendGrantMinter(deployer.getSender(), {
+            value: toNano('0.05'),
+            afterMinterAddress: deployer.address
+        })
+
+        const mintResult = await wusd.sendMint(deployer.getSender(), {
+            value: toNano('0.05'),
+            jettonValue: toNano(5),
+            toAddress: deployer.address
+        })
+
+        let burner = await blockchain.treasury('burner');
+
+        const changeResult = await wusd.sendGrantBurner(deployer.getSender(), {
+            value: toNano('0.05'),
+            afterBurnerAddress: burner.address
+        });
+
+        const burnResult =await wusd.sendBurn(burner.getSender(), {
+            value: toNano('0.05'),
+            jettonValue: toNano(3),
+            respAddress: deployer.address
+        });
+
+        let afterBurn = await deployerJettonWallet.getJettonBalance();
+        console.log("deployer wallet after burn balance",afterBurn)
+
+        expect(burnResult.transactions).toHaveTransaction({
+            from: burner.address,
+            to: wusd.address,
+            success: true,
+        })
+
     })
 
     it('get jetton data', async () => {
@@ -734,7 +861,7 @@ describe('WUSD', () => {
             from: deployerJettonWallet.address,
             to: wusd.address,
             aborted: true,
-            exitCode: Errors.unouthorized_burn // Unauthorized burn
+            exitCode: Errors.unauthorized_burn // Unauthorized burn
         });
 
     });
@@ -873,6 +1000,10 @@ describe('WUSD', () => {
 
     it('can not send to masterchain', async () => {
         const deployerJettonWallet = await userWallet(deployer.address);
+        await wusd.sendGrantMinter(deployer.getSender(), {
+            value: toNano('0.03'),
+            afterMinterAddress: deployer.address
+        })
         const mintResult = await wusd.sendMint(deployer.getSender(), {
             value: toNano('0.03'),
             jettonValue: toNano('1.5'),

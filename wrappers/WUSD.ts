@@ -4,12 +4,13 @@ import {
     Cell,
     Contract,
     contractAddress,
-    ContractProvider,
+    ContractProvider, Dictionary,
     Sender,
     SendMode,
     toNano
 } from '@ton/core';
 import {Op} from "./JettonConstants";
+import {sha256} from "@ton/crypto";
 
 export type JettonMinterContent = {
     name: string,
@@ -29,9 +30,16 @@ export type WUConfig = {
 };
 
 export function wUConfigToCell(config: WUConfig): Cell {
+    const burnerDict = Dictionary.empty(Dictionary.Keys.Buffer(32), Dictionary.Values.Cell());
+    // burnerDict.set(config.burnerAddress.hash, beginCell().endCell());
+    const minterDict = Dictionary.empty(Dictionary.Keys.Buffer(32), Dictionary.Values.Cell());
+    const adminDict = Dictionary.empty(Dictionary.Keys.Buffer(32), Dictionary.Values.Cell());
+    const recoverDict = Dictionary.empty(Dictionary.Keys.Buffer(32), Dictionary.Values.Cell());
+
     return beginCell().storeCoins(config.totalSupply).storeAddress(config.adminAddress)
         .storeRef(beginCell().storeBuffer(Buffer.from(config.name), 13).storeBuffer(Buffer.from(config.symbol), 4).storeUint(config.decimals, 8).endCell())
-        .storeRef(config.wallet_code).storeAddress(config.minterAddress).storeAddress(config.burnerAddress)
+        .storeRef(config.wallet_code)
+        .storeRef(beginCell().storeDict(minterDict).storeDict(burnerDict).storeDict(adminDict).storeDict(recoverDict).endCell())
         .endCell();
 }
 
@@ -89,7 +97,6 @@ export class WUSD implements Contract {
             body: beginCell()
                 .storeUint(Opcodes.mint, 32)
                 .storeUint(opts.queryId ?? 0, 64)
-                .storeAddress(via.address)
                 .storeAddress(opts.toAddress)
                 .storeCoins(opts.value)
                 .storeRef(beginCell()
@@ -149,7 +156,7 @@ export class WUSD implements Contract {
             value: opts.value,
             sendMode: SendMode.PAY_GAS_SEPARATELY,
             body: beginCell()
-                .storeUint(Op.salvage, 32)
+                .storeUint(Op.recover, 32)
                 .storeUint(opts.queryId ?? 0, 64)
                 .storeAddress(opts.toAddress)
                 .storeCoins(opts.value)
@@ -228,7 +235,7 @@ export class WUSD implements Contract {
         });
     }
 
-    async sendChangeMinter(
+    async sendGrantMinter(
         provider: ContractProvider,
         via: Sender,
         opts: {
@@ -241,14 +248,14 @@ export class WUSD implements Contract {
             value: opts.value,
             sendMode: SendMode.PAY_GAS_SEPARATELY,
             body: beginCell()
-                .storeUint(Op.change_minter, 32)
+                .storeUint(Op.grant_minter, 32)
                 .storeUint(opts.queryId ?? 0, 64)
                 .storeAddress(opts.afterMinterAddress)
                 .endCell(),
         });
     }
 
-    async sendChangeBurner(
+    async sendGrantBurner(
         provider: ContractProvider,
         via: Sender,
         opts: {
@@ -261,15 +268,54 @@ export class WUSD implements Contract {
             value: opts.value,
             sendMode: SendMode.PAY_GAS_SEPARATELY,
             body: beginCell()
-                .storeUint(Op.change_burner, 32)
+                .storeUint(Op.grant_burner, 32)
                 .storeUint(opts.queryId ?? 0, 64)
+                .storeAddress(opts.afterBurnerAddress)
                 .storeAddress(opts.afterBurnerAddress)
                 .endCell(),
         });
 
     }
 
+    async sendRemoveBurner(
+        provider: ContractProvider,
+        via: Sender,
+        opts: {
+            value: bigint,
+            queryId?: number;
+            removeBurnerAddress: Address;
+        }
+    ){
+        await provider.internal(via, {
+            value: opts.value,
+            sendMode: SendMode.PAY_GAS_SEPARATELY,
+            body: beginCell()
+                .storeUint(Op.remove_burner, 32)
+                .storeUint(opts.queryId ?? 0, 64)
+                .storeAddress(opts.removeBurnerAddress)
+                .endCell(),
+        });
+    }
 
+    async sendRemoveMinter(
+        provider: ContractProvider,
+        via: Sender,
+        opts: {
+            value: bigint,
+            queryId?: number;
+            removeMinterAddress: Address;
+        }
+    ){
+        await provider.internal(via, {
+            value: opts.value,
+            sendMode: SendMode.PAY_GAS_SEPARATELY,
+            body: beginCell()
+                .storeUint(Op.remove_minter, 32)
+                .storeUint(opts.queryId ?? 0, 64)
+                .storeAddress(opts.removeMinterAddress)
+                .endCell(),
+        });
+    }
 
     async sendChangeContent(provider: ContractProvider, via: Sender, content: Cell) {
         if (!via.address) {
@@ -300,6 +346,7 @@ export class WUSD implements Contract {
     }
 
     async getWalletAddress(provider: ContractProvider, ownerAddress: Address) {
+
         const result = await provider.get('get_wallet_address', [{
             type: 'slice',
             cell: beginCell().storeAddress(ownerAddress).endCell()
@@ -308,6 +355,8 @@ export class WUSD implements Contract {
     }
 
     async getJettonData(provider: ContractProvider) {
+        const burnerDict = Dictionary.empty(Dictionary.Keys.Buffer(32), Dictionary.Values.Cell());
+
         let res = await provider.get('get_jetton_data', []);
         let totalSupply = res.stack.readBigNumber();
         let adminAddress = res.stack.readAddress();
@@ -317,8 +366,10 @@ export class WUSD implements Contract {
         const symbol = cs.loadBuffer(4).toString();
         const decimals = cs.loadUint(8);
         let jettonWalletCode = res.stack.readCell();
-        let minterAddress = res.stack.readAddress();
-        let burnerAddress = res.stack.readAddress();
+        // let minterAddressDict = res.stack.readCell();
+        // let burnerAddressDict = res.stack.readCell();
+
+        // let addresses = burnerAddressDict.beginParse().loadDict(Dictionary.Keys.Uint(256),Dictionary.Values.Cell());
         return {
             totalSupply,
             adminAddress,
@@ -326,8 +377,6 @@ export class WUSD implements Contract {
             symbol,
             decimals,
             content,
-            minterAddress,
-            burnerAddress
         };
     }
 
@@ -336,15 +385,15 @@ export class WUSD implements Contract {
         return res.content;
     }
 
-    async getMinterAddress(provider: ContractProvider){
-        let res = await this.getJettonData(provider);
-        return res.minterAddress;
-    }
-
-    async getBurnerAddress(provider: ContractProvider) {
-        let res = await this.getJettonData(provider);
-        return res.burnerAddress;
-    }
+    // async getMinterAddress(provider: ContractProvider){
+    //     let res = await this.getJettonData(provider);
+    //     return res.minterAddress;
+    // }
+    //
+    // async getBurnerAddress(provider: ContractProvider) {
+    //     let res = await this.getJettonData(provider);
+    //     return res;
+    // }
 
 
 }

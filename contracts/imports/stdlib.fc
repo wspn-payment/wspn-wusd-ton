@@ -888,3 +888,8 @@ const int RESERVE_BOUNCE_ON_ACTION_FAIL = 16;
 cell create_token_onchain_metadata(cell content_dict) inline {
     return begin_cell().store_uint(0, 8).store_dict(content_dict).end_cell();
 }
+
+int dict_contains?(cell dict, int key_len, int index) {
+    (slice v, int found) = dict.udict_get?(key_len, index);
+    return found;
+}

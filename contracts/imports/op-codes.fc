@@ -4,9 +4,12 @@ int op::internal_transfer() asm "0x178d4519 PUSHINT";
 int op::excesses() asm "0xd53276db PUSHINT";
 int op::burn() asm "0x595f07bc PUSHINT";
 int op::burn_notification() asm "0x7bdd97de PUSHINT";
-int op::change_minter() asm "0xc9e8a8d0 PUSHINT";
-int op::change_burner() asm "0x96d0ae07 PUSHINT";
-int op::salvage() asm "0xa33fe996 PUSHINT";
+int op::grant_minter() asm "0xc9e8a8d0 PUSHINT";
+int op::grant_burner() asm "0x96d0ae07 PUSHINT";
+int op::remove_minter() asm "0x60b579aa PUSHINT";
+int op::remove_burner() asm "0x3f8d7f7d PUSHINT";
+
+int op::recover() asm "0xa33fe996 PUSHINT";
 
 ;; Minter
 int op::mint() asm "21 PUSHINT";
