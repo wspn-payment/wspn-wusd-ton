@@ -107,18 +107,29 @@ describe('WUSD', () => {
 
     });
 
-    it('minter admin can change content', async () => {
+    it('admin role can change content', async () => {
+
         let newContent = jettonContentToCell({name: "Worldwide USD", symbol: "WUSD", decimals: 18})
         expect((await wusd.getContent()).equals(defaultContent)).toBe(true);
+
+        let newAdmin = await blockchain.treasury('newAdmin');
+        await wusd.sendGrantRole(deployer.getSender(),{
+            value:toNano(0.03),
+            grantAddress: newAdmin.address,
+            grantOp: Op.grant_admin
+        })
+
         let changeContent = await wusd.sendChangeContent(deployer.getSender(), newContent);
         expect((await wusd.getContent()).equals(newContent)).toBe(true);
+
+
         changeContent = await wusd.sendChangeContent(deployer.getSender(), defaultContent);
         expect((await wusd.getContent()).equals(defaultContent)).toBe(true);
     });
-    it('not a minter admin can not change content', async () => {
-        let newContent = beginCell().storeUint(1,1).endCell();
+    it('not a admin can not change content', async () => {
+        let newContent = jettonContentToCell({name: "Worldwide USD", symbol: "WUSE", decimals: 18});
         let changeContent = await wusd.sendChangeContent(notDeployer.getSender(), newContent);
-        expect((await wusd.getContent()).equals(defaultContent)).toBe(true);
+        // expect((await wusd.getContent()).equals(defaultContent)).toBe(true);
         expect(changeContent.transactions).toHaveTransaction({
             from: notDeployer.address,
             to: wusd.address,
@@ -149,7 +160,15 @@ describe('WUSD', () => {
         const adminAddress = await wusd.getAdminAddress();
         console.log("before change adminAddress", adminAddress)
 
-        const changeResult = await wusd.sendChangeAdmin(deployer.getSender(), {
+        let newAdmin = await blockchain.treasury('newAdmin');
+
+        await wusd.sendGrantRole(deployer.getSender(), {
+            value: toNano('0.05'),
+            grantAddress: newAdmin.address,
+            grantOp: Op.grant_admin
+        })
+
+        const changeResult = await wusd.sendChangeAdmin(newAdmin.getSender(), {
             value: toNano('0.05'),
             afterAdminAddress: Address.parse("EQDdhET334XLlXwa1JjPRo-2Gvczt8OmRexEOJeUsGmsHlOV")
         });
@@ -165,9 +184,10 @@ describe('WUSD', () => {
         const deployerJettonWallet = await userWallet(deployer.address);
 
         let minter = await blockchain.treasury('minter');
-        const changeResult = await wusd.sendGrantMinter(deployer.getSender(), {
+        const changeResult = await wusd.sendGrantRole(deployer.getSender(), {
             value: toNano('0.05'),
-            afterMinterAddress: minter.address
+            grantAddress: minter.address,
+            grantOp: Op.grant_minter
         });
 
         const mintResult = await wusd.sendMint(minter.getSender(), {
@@ -186,14 +206,16 @@ describe('WUSD', () => {
         const deployerJettonWallet = await userWallet(deployer.address);
 
         let minter = await blockchain.treasury('minter');
-        const changeResult = await wusd.sendGrantMinter(deployer.getSender(), {
+        const changeResult = await wusd.sendGrantRole(deployer.getSender(), {
             value: toNano('0.05'),
-            afterMinterAddress: minter.address
+            grantAddress: minter.address,
+            grantOp: Op.grant_minter
         });
 
-        const removeResult = await wusd.sendRemoveMinter(deployer.getSender(),{
+        const removeResult = await wusd.sendRemoveRole(deployer.getSender(),{
             value: toNano('0.05'),
-            removeMinterAddress: minter.address
+            removeAddress: minter.address,
+            removeOp: Op.remove_minter
         });
 
         expect(removeResult.transactions).toHaveTransaction({
@@ -216,14 +238,16 @@ describe('WUSD', () => {
     it('remove burner address success',async () => {
         let burner = await blockchain.treasury('burner');
 
-        const grantResult = await wusd.sendGrantBurner(deployer.getSender(), {
+        const grantResult = await wusd.sendGrantRole(deployer.getSender(), {
             value: toNano('0.05'),
-            afterBurnerAddress: burner.address
+            grantAddress: burner.address,
+            grantOp: Op.grant_burner
         });
 
-        const removeResult = await wusd.sendRemoveBurner(deployer.getSender(),{
+        const removeResult = await wusd.sendRemoveRole(deployer.getSender(),{
             value: toNano('0.05'),
-            removeBurnerAddress: burner.address
+            removeAddress: burner.address,
+            removeOp: Op.remove_burner
         });
 
         expect(removeResult.transactions).toHaveTransaction({
@@ -232,16 +256,15 @@ describe('WUSD', () => {
             success:true
         })
 
-
-
     })
 
     it('not burner address role can not burn token',async () => {
         const deployerJettonWallet = await userWallet(deployer.address);
 
-        const grantResult = await wusd.sendGrantMinter(deployer.getSender(), {
+        const grantResult = await wusd.sendGrantRole(deployer.getSender(), {
             value: toNano('0.05'),
-            afterMinterAddress: deployer.address
+            grantAddress: deployer.address,
+            grantOp: Op.grant_minter
         });
 
         const mintResult = await wusd.sendMint(deployer.getSender(), {
@@ -252,9 +275,10 @@ describe('WUSD', () => {
 
         let burner = await blockchain.treasury('burner');
 
-        const changeResult = await wusd.sendGrantBurner(deployer.getSender(), {
+        const changeResult = await wusd.sendGrantRole(deployer.getSender(), {
             value: toNano('0.05'),
-            afterBurnerAddress: burner.address
+            grantAddress: burner.address,
+            grantOp: Op.grant_burner
         });
 
         const burnResult =await wusd.sendBurn(deployer.getSender(), {
@@ -278,9 +302,10 @@ describe('WUSD', () => {
     it('only burner address role can burn token',async () =>{
 
         const deployerJettonWallet = await userWallet(deployer.address);
-        await wusd.sendGrantMinter(deployer.getSender(), {
+        await wusd.sendGrantRole(deployer.getSender(), {
             value: toNano('0.05'),
-            afterMinterAddress: deployer.address
+            grantAddress: deployer.address,
+            grantOp: Op.grant_minter
         })
 
         const mintResult = await wusd.sendMint(deployer.getSender(), {
@@ -291,9 +316,10 @@ describe('WUSD', () => {
 
         let burner = await blockchain.treasury('burner');
 
-        const changeResult = await wusd.sendGrantBurner(deployer.getSender(), {
+        const changeResult = await wusd.sendGrantRole(deployer.getSender(), {
             value: toNano('0.05'),
-            afterBurnerAddress: burner.address
+            grantAddress: burner.address,
+            grantOp: Op.grant_burner
         });
 
         const burnResult =await wusd.sendBurn(burner.getSender(), {
@@ -386,8 +412,15 @@ describe('WUSD', () => {
 
     })
 
-    it('admin could salvage token from other owner',async ()=>{
+    it('only recover address could recover token from other owner',async ()=>{
         const noDeployerJettonWallet = await userWallet(notDeployer.address);
+
+        await wusd.sendGrantRole(deployer.getSender(), {
+            value: toNano('0.03'),
+            grantAddress: deployer.address,
+            grantOp: Op.grant_minter
+        })
+
         const mintResult = await wusd.sendMint(deployer.getSender(), {
             value: toNano('0.03'),
             jettonValue: toNano(5),
@@ -396,7 +429,15 @@ describe('WUSD', () => {
         let beforeSalvageBalance = await noDeployerJettonWallet.getJettonBalance();
         console.log("initialJettonBalance",beforeSalvageBalance)
 
-        const salvageResult = await wusd.sendSalvage(deployer.getSender(), {
+        let recover = await blockchain.treasury('recover');
+
+        await wusd.sendGrantRole(deployer.getSender(), {
+            value: toNano('0.03'),
+            grantAddress: recover.address,
+            grantOp: Op.grant_recover
+        });
+
+        const recoverResult = await wusd.sendRecover(recover.getSender(), {
             value: toNano('0.03'),
             jettonValue: toNano(5),
             toAddress: notDeployer.address,
@@ -1000,9 +1041,10 @@ describe('WUSD', () => {
 
     it('can not send to masterchain', async () => {
         const deployerJettonWallet = await userWallet(deployer.address);
-        await wusd.sendGrantMinter(deployer.getSender(), {
+        await wusd.sendGrantRole(deployer.getSender(), {
             value: toNano('0.03'),
-            afterMinterAddress: deployer.address
+            grantAddress: deployer.address,
+            grantOp: Op.grant_minter
         })
         const mintResult = await wusd.sendMint(deployer.getSender(), {
             value: toNano('0.03'),

@@ -11,11 +11,20 @@ export abstract class Op {
     static mint = 21;
     static change_admin = 3;
     static change_content = 4;
+
+    static grant_role = 0xf3a6d21d;
+    static remove_role = 0xc6bae5c6;
+
     static grant_minter = 0xc9e8a8d0;
     static grant_burner = 0x96d0ae07;
+    static grant_admin = 0x46cb26b1;
+    static grant_recover = 0xdd8f8741;
+
     static recover = 0xa33fe996;
     static remove_minter = 0x60b579aa;
     static remove_burner = 0x3f8d7f7d;
+    static remove_admin = 0x57ff3ada;
+    static remove_recover = 0xd855a1de;
 
 }
 

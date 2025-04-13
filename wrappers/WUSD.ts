@@ -141,7 +141,7 @@ export class WUSD implements Contract {
         });
     }
 
-    async sendSalvage(
+    async sendRecover(
         provider: ContractProvider,
         via: Sender,
         opts: {
@@ -235,84 +235,46 @@ export class WUSD implements Contract {
         });
     }
 
-    async sendGrantMinter(
+    async sendGrantRole(
         provider: ContractProvider,
         via: Sender,
         opts: {
             value: bigint,
             queryId?: number;
-            afterMinterAddress: Address;
+            grantAddress: Address;
+            grantOp: number
         }
     ){
         await provider.internal(via, {
             value: opts.value,
             sendMode: SendMode.PAY_GAS_SEPARATELY,
             body: beginCell()
-                .storeUint(Op.grant_minter, 32)
+                .storeUint(Op.grant_role, 32)
                 .storeUint(opts.queryId ?? 0, 64)
-                .storeAddress(opts.afterMinterAddress)
+                .storeAddress(opts.grantAddress)
+                .storeUint(opts.grantOp,32)
                 .endCell(),
         });
     }
 
-    async sendGrantBurner(
+    async sendRemoveRole(
         provider: ContractProvider,
         via: Sender,
         opts: {
             value: bigint,
             queryId?: number;
-            afterBurnerAddress: Address;
+            removeAddress: Address;
+            removeOp: number
         }
     ){
         await provider.internal(via, {
             value: opts.value,
             sendMode: SendMode.PAY_GAS_SEPARATELY,
             body: beginCell()
-                .storeUint(Op.grant_burner, 32)
+                .storeUint(Op.remove_role, 32)
                 .storeUint(opts.queryId ?? 0, 64)
-                .storeAddress(opts.afterBurnerAddress)
-                .storeAddress(opts.afterBurnerAddress)
-                .endCell(),
-        });
-
-    }
-
-    async sendRemoveBurner(
-        provider: ContractProvider,
-        via: Sender,
-        opts: {
-            value: bigint,
-            queryId?: number;
-            removeBurnerAddress: Address;
-        }
-    ){
-        await provider.internal(via, {
-            value: opts.value,
-            sendMode: SendMode.PAY_GAS_SEPARATELY,
-            body: beginCell()
-                .storeUint(Op.remove_burner, 32)
-                .storeUint(opts.queryId ?? 0, 64)
-                .storeAddress(opts.removeBurnerAddress)
-                .endCell(),
-        });
-    }
-
-    async sendRemoveMinter(
-        provider: ContractProvider,
-        via: Sender,
-        opts: {
-            value: bigint,
-            queryId?: number;
-            removeMinterAddress: Address;
-        }
-    ){
-        await provider.internal(via, {
-            value: opts.value,
-            sendMode: SendMode.PAY_GAS_SEPARATELY,
-            body: beginCell()
-                .storeUint(Op.remove_minter, 32)
-                .storeUint(opts.queryId ?? 0, 64)
-                .storeAddress(opts.removeMinterAddress)
+                .storeAddress(opts.removeAddress)
+                .storeUint(opts.removeOp,32)
                 .endCell(),
         });
     }

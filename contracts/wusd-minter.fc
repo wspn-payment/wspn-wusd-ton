@@ -42,8 +42,8 @@ global cell ctx_permissions;
             .store_ref(content)
             .store_ref(jetton_wallet_code)
             .store_ref(ctx_permissions)
-            ;; .store_dict(ctx_minter_dict)
-            ;; .store_dict(ctx_burner_dict)
+        ;; .store_dict(ctx_minter_dict)
+        ;; .store_dict(ctx_burner_dict)
             .end_cell()
     );
 }
@@ -93,14 +93,19 @@ global cell ctx_permissions;
 
     load_data(); ;; here we populate the storage variables
 
+    slice permission_cs = ctx_permissions.begin_parse();
+    cell ctx_minter_dict = permission_cs~load_dict();
+    cell ctx_burner_dict = permission_cs~load_dict();
+    cell ctx_admin_dict = permission_cs~load_dict();
+    cell ctx_recover_dict = permission_cs~load_dict();
+
     int op = in_msg_body~load_uint(32); ;; by convention, the first 32 bits of incoming message is the op
     int query_id = in_msg_body~load_uint(64); ;; also by convention, the next 64 bits contain the "query id", although this is not always the case
     if (op == op::mint()) {
         slice sender_address = cs~load_msg_addr();
         int hash = sender_address.slice_hash();
-        slice permission_cs = ctx_permissions.begin_parse();
-        cell ctx_minter_dict = permission_cs~load_dict();
-        throw_unless(76, ctx_minter_dict.dict_contains?(256,hash));
+
+        throw_unless(76, ctx_minter_dict.dict_contains?(256, hash));
         slice to_address = in_msg_body~load_msg_addr();
         int amount = in_msg_body~load_coins();
         cell master_msg = in_msg_body~load_ref();
@@ -117,10 +122,8 @@ global cell ctx_permissions;
 
         slice sender_address = cs~load_msg_addr();
         int hash = sender_address.slice_hash();
-        slice permission_cs = ctx_permissions.begin_parse();
-        cell ctx_minter_dict = permission_cs~load_dict();
-        cell ctx_burner_dict = permission_cs~load_dict();
-        throw_unless(74,ctx_burner_dict.dict_contains?(256,hash));
+
+        throw_unless(74, ctx_burner_dict.dict_contains?(256, hash));
 
         int amount = in_msg_body~load_coins();
         cell master_msg = in_msg_body~load_ref();
@@ -137,12 +140,9 @@ global cell ctx_permissions;
     ;; this method can burn all the wallet balance to deal with the attacks from hackers
     if (op == op::recover()) {
         slice sender_address = cs~load_msg_addr();
-        slice permission_cs = ctx_permissions.begin_parse();
-        cell ctx_minter_dict = permission_cs~load_dict();
-        cell ctx_burner_dict = permission_cs~load_dict();
-        cell ctx_admin_dict = permission_cs~load_dict();
-        cell ctx_recover_dict = permission_cs~load_dict();
-        throw_unless(73, equal_slices(sender_address, ctx_admin_address));
+        int hash = sender_address.slice_hash();
+
+        throw_unless(77, ctx_recover_dict.dict_contains?(256, hash));
 
         slice to_address = in_msg_body~load_msg_addr();
         int amount = in_msg_body~load_coins();
@@ -188,110 +188,79 @@ global cell ctx_permissions;
         return ();
     }
 
-    if (op == 3) {
+    if (op == op::change_admin()) {
         ;; change admin
         slice sender_address = cs~load_msg_addr();
+        int hash = sender_address.slice_hash();
 
-        throw_unless(73, equal_slices(sender_address, ctx_admin_address));
+        throw_unless(73, equal_slices(sender_address, ctx_admin_address) | ctx_admin_dict.dict_contains?(256,hash));
+
         slice new_admin_address = in_msg_body~load_msg_addr();
         ctx_admin_address = new_admin_address;
         save_data();
         return ();
     }
 
-    if (op == 4) {
+    if (op == op::change_content()) {
         ;; change content, delete this for immutable tokens
         slice sender_address = in_msg_body~load_msg_addr();
-        throw_unless(73, equal_slices(sender_address, ctx_admin_address));
+        int hash = sender_address.slice_hash();
+        throw_unless(73, equal_slices(sender_address, ctx_admin_address) | ctx_admin_dict.dict_contains?(256,hash));
         content = in_msg_body~load_ref();
         save_data();
         return ();
     }
 
-    if (op == op::grant_minter()) {
+    if (op == op::grant_role()) {
         slice sender_address = cs~load_msg_addr();
-        throw_unless(73, equal_slices(sender_address, ctx_admin_address));
+        int adminHash = sender_address.slice_hash();
+        throw_unless(73, equal_slices(sender_address, ctx_admin_address) | ctx_admin_dict.dict_contains?(256,adminHash));
 
-        slice new_minter = in_msg_body~load_msg_addr();
+        slice new_role_address = in_msg_body~load_msg_addr();
+        int child_op = in_msg_body~load_uint(32);
 
-        int hash = new_minter.slice_hash();
+        int hash = new_role_address.slice_hash();
         slice empty = begin_cell().end_cell().begin_parse();
 
-        slice permission_cs = ctx_permissions.begin_parse();
-        cell ctx_minter_dict = permission_cs~load_dict();
-        cell ctx_burner_dict = permission_cs~load_dict();
-        cell ctx_admin_dict = permission_cs~load_dict();
-        cell ctx_recover_dict = permission_cs~load_dict();
-
-        ctx_minter_dict = ctx_minter_dict.udict_set(256,hash,empty);
-
-        ctx_permissions = begin_cell()
-            .store_dict(ctx_minter_dict).store_dict(ctx_burner_dict).store_dict(ctx_admin_dict).store_dict(ctx_recover_dict).end_cell();
-        save_data();
-        return ();
-    }
-
-    if (op == op::grant_burner()) {
-        slice sender_address = cs~load_msg_addr();
-        throw_unless(73, equal_slices(sender_address, ctx_admin_address));
-        slice new_burner = in_msg_body~load_msg_addr();
-
-        int hash = new_burner.slice_hash();
-        slice empty = begin_cell().end_cell().begin_parse();
-
-        slice permission_cs = ctx_permissions.begin_parse();
-        cell ctx_minter_dict = permission_cs~load_dict();
-        cell ctx_burner_dict = permission_cs~load_dict();
-        cell ctx_admin_dict = permission_cs~load_dict();
-        cell ctx_recover_dict = permission_cs~load_dict();
-
-        ctx_burner_dict = ctx_burner_dict.udict_set(256, hash, empty);
+        if (child_op == op::grant_minter()) {
+            ctx_minter_dict = ctx_minter_dict.udict_set(256, hash, empty);
+        } elseif (child_op == op::grant_burner()) {
+            ctx_burner_dict = ctx_burner_dict.udict_set(256, hash, empty);
+        } elseif (child_op == op::grant_admin()) {
+            ctx_admin_dict = ctx_admin_dict.udict_set(256, hash, empty);
+        } elseif (child_op == op::grant_recover()) {
+            ctx_recover_dict = ctx_recover_dict.udict_set(256, hash, empty);
+        }
 
         ctx_permissions = begin_cell()
             .store_dict(ctx_minter_dict).store_dict(ctx_burner_dict).store_dict(ctx_admin_dict).store_dict(ctx_recover_dict).end_cell();
         save_data();
 
-        return ();
-    }
-
-    if (op == op::remove_minter()) {
-        slice sender_address = cs~load_msg_addr();
-        throw_unless(73, equal_slices(sender_address, ctx_admin_address));
-        slice remove_minter = in_msg_body~load_msg_addr();
-        int hash = remove_minter.slice_hash();
-
-        slice permission_cs = ctx_permissions.begin_parse();
-        cell ctx_minter_dict = permission_cs~load_dict();
-        cell ctx_burner_dict = permission_cs~load_dict();
-        cell ctx_admin_dict = permission_cs~load_dict();
-        cell ctx_recover_dict = permission_cs~load_dict();
-
-        (ctx_minter_dict,int flag) = ctx_minter_dict.udict_delete?(256,hash);
-
-        ctx_permissions = begin_cell()
-            .store_dict(ctx_minter_dict).store_dict(ctx_burner_dict).store_dict(ctx_admin_dict).store_dict(ctx_recover_dict).end_cell();
-        save_data();
 
         return ();
     }
 
-    if (op == op::remove_burner()) {
+    if (op == op::remove_role()) {
         slice sender_address = cs~load_msg_addr();
-        throw_unless(73, equal_slices(sender_address, ctx_admin_address));
-        slice remove_burner = in_msg_body~load_msg_addr();
-        int hash = remove_burner.slice_hash();
+        int adminHash = sender_address.slice_hash();
+        throw_unless(73, equal_slices(sender_address, ctx_admin_address) | ctx_admin_dict.dict_contains?(256,adminHash));
 
-        slice permission_cs = ctx_permissions.begin_parse();
-        cell ctx_minter_dict = permission_cs~load_dict();
-        cell ctx_burner_dict = permission_cs~load_dict();
-        cell ctx_admin_dict = permission_cs~load_dict();
-        cell ctx_recover_dict = permission_cs~load_dict();
+        slice remove_role_address = in_msg_body~load_msg_addr();
+        int child_op = in_msg_body~load_uint(32);
 
-        (ctx_burner_dict,int flag) = ctx_burner_dict.udict_delete?(256,hash);
+        int hash = remove_role_address.slice_hash();
+        if (child_op == op::remove_minter()) {
+            (ctx_minter_dict, int flag) = ctx_minter_dict.udict_delete?(256, hash);
+        } elseif (child_op == op::remove_burner()) {
+            (ctx_burner_dict, int flag) = ctx_burner_dict.udict_delete?(256, hash);
+        } elseif (child_op == op::remove_admin()) {
+            (ctx_admin_dict, int flag) = ctx_admin_dict.udict_delete?(256, hash);
+        } elseif (child_op == op::remove_recover()) {
+            (ctx_recover_dict, int flag) = ctx_recover_dict.udict_delete?(256, hash);
+        }
 
         ctx_permissions = begin_cell()
             .store_dict(ctx_minter_dict).store_dict(ctx_burner_dict).store_dict(ctx_admin_dict).store_dict(ctx_recover_dict).end_cell();
-
         save_data();
 
         return ();
