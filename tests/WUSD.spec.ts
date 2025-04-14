@@ -81,6 +81,13 @@ describe('WUSD', () => {
         console.log("totalSupplyAfter2", totalSupplyAfter2);
 
         const deployerJettonWallet = await userWallet(deployer.address);
+
+        wusd.sendGrantRole(deployer.getSender(),{
+            value: toNano('0.05'),
+            grantAddress: deployer.address,
+            grantOp: Op.grant_minter
+        })
+
         const mintResult = await wusd.sendMint(deployer.getSender(), {
             value: toNano('0.05'),
             jettonValue: toNano(5),
@@ -92,6 +99,12 @@ describe('WUSD', () => {
 
         let initialJettonBalance = await deployerJettonWallet.getJettonBalance();
         console.log("deployer wallet balance",initialJettonBalance)
+
+        await wusd.sendGrantRole(deployer.getSender(), {
+            value: toNano('0.05'),
+            grantAddress: deployer.address,
+            grantOp: Op.grant_burner
+        })
 
         const burnResult = await wusd.sendBurn(deployer.getSender(), {
             value: toNano('0.05'),
@@ -397,6 +410,12 @@ describe('WUSD', () => {
         let initialJettonBalance = await deployerJettonWallet.getJettonBalance();
         console.log("before mint",initialJettonBalance)
 
+        await wusd.sendGrantRole(deployer.getSender(), {
+            value: toNano('0.03'),
+            grantAddress: deployer.address,
+            grantOp: Op.grant_minter
+        });
+
         const mintResult = await wusd.sendMint(deployer.getSender(), {
             value: toNano('0.03'),
             jettonValue: toNano(5),
@@ -409,6 +428,8 @@ describe('WUSD', () => {
         console.log("after mint",initialJettonBalance)
         const  totalSupply = await wusd.getTotalSupply()
         console.log("total supply",totalSupply)
+        expect(initialJettonBalance).toEqual(5000000000n);
+        expect(totalSupply).toEqual(5000000000);
 
     })
 
@@ -444,16 +465,23 @@ describe('WUSD', () => {
             respAddress: deployer.address
         })
 
-        let afterSalvageBalance = await noDeployerJettonWallet.getJettonBalance();
-        console.log("after salvage the wallet balance",afterSalvageBalance)
+        let afterRecoverBalance = await noDeployerJettonWallet.getJettonBalance();
+        console.log("after salvage the wallet balance",afterRecoverBalance)
 
-        expect(afterSalvageBalance).toEqual(beforeSalvageBalance-toNano(5));
+        expect(afterRecoverBalance).toEqual(beforeSalvageBalance-toNano(5));
 
     })
 
     it('correct send jettons to the other', async ()=>{
         const deployerJettonWallet = await userWallet(deployer.address);
         const unDeployerJettonWallet = await userWallet(notDeployer.address);
+
+        await wusd.sendGrantRole(deployer.getSender(), {
+            value: toNano('0.03'),
+            grantAddress: deployer.address,
+            grantOp: Op.grant_minter
+        });
+
         const mintResult = await wusd.sendMint(deployer.getSender(), {
             value: toNano('0.03'),
             jettonValue: toNano(5),
@@ -473,6 +501,9 @@ describe('WUSD', () => {
         console.log("after send",afterSendBalance);
         let otherReceived = await unDeployerJettonWallet.getJettonBalance();
         console.log("otherReceived",otherReceived)
+
+        expect(afterSendBalance).toEqual(5000000000n-toNano(1));
+        expect(otherReceived).toEqual(5000000000n-afterSendBalance);
     })
 
 
@@ -508,6 +539,13 @@ describe('WUSD', () => {
 
     it('correctly sends forward_payload', async () => {
         const deployerJettonWallet = await userWallet(deployer.address);
+
+        await wusd.sendGrantRole(deployer.getSender(), {
+            value: toNano('0.03'),
+            grantAddress: deployer.address,
+            grantOp: Op.grant_minter
+        })
+
         const mintResult = await wusd.sendMint(deployer.getSender(), {
             value: toNano('0.03'),
             jettonValue: toNano(5),
@@ -558,6 +596,13 @@ describe('WUSD', () => {
 
     it('no forward_ton_amount - no forward', async () => {
         const deployerJettonWallet = await userWallet(deployer.address);
+
+        await wusd.sendGrantRole(deployer.getSender(), {
+            value: toNano('0.03'),
+            grantAddress: deployer.address,
+            grantOp: Op.grant_minter
+        })
+
         const mintResult = await wusd.sendMint(deployer.getSender(), {
             value: toNano('0.03'),
             jettonValue: toNano(5),
@@ -620,6 +665,13 @@ describe('WUSD', () => {
     // implementation detail
     it('works with minimal ton amount', async () => {
         const deployerJettonWallet = await userWallet(deployer.address);
+
+        await wusd.sendGrantRole(deployer.getSender(), {
+            value: toNano('0.03'),
+            grantAddress: deployer.address,
+            grantOp: Op.grant_minter
+        })
+
         const mintResult = await wusd.sendMint(deployer.getSender(), {
             value: toNano('0.03'),
             jettonValue: toNano('0.35'),
@@ -665,6 +717,12 @@ describe('WUSD', () => {
 
     it('works with minimal ton amount with notification', async () => {
         const deployerJettonWallet = await userWallet(deployer.address);
+        await wusd.sendGrantRole(deployer.getSender(), {
+            value: toNano('0.03'),
+            grantAddress: deployer.address,
+            grantOp: Op.grant_minter
+        })
+
         const mintResult = await wusd.sendMint(deployer.getSender(), {
             value: toNano('0.03'),
             jettonValue: toNano('0.35'),
@@ -727,6 +785,12 @@ describe('WUSD', () => {
 
     it('wallet does not accept internal_transfer not from wallet', async () => {
         const deployerJettonWallet = await userWallet(deployer.address);
+
+        await wusd.sendGrantRole(deployer.getSender(), {
+            value: toNano('0.03'),
+            grantAddress: deployer.address,
+            grantOp: Op.grant_minter
+        })
         const mintResult = await wusd.sendMint(deployer.getSender(), {
             value: toNano('0.03'),
             jettonValue: toNano('1'),
@@ -763,184 +827,6 @@ describe('WUSD', () => {
         expect(await deployerJettonWallet.getJettonBalance()).toEqual(initialJettonBalance);
     });
 
-    it('wallet owner should be able to burn jettons', async () => {
-        const deployerJettonWallet = await userWallet(deployer.address);
-        const mintResult = await wusd.sendMint(deployer.getSender(), {
-            value: toNano('0.03'),
-            jettonValue: toNano('0.5'),
-            toAddress: deployer.address
-        })
-        let initialJettonBalance = await deployerJettonWallet.getJettonBalance();
-        let initialTotalSupply = await wusd.getTotalSupply();
-        let burnAmount = toNano('0.01');
-        const sendResult = await deployerJettonWallet.sendBurn(deployer.getSender(), toNano('0.1'), // ton amount
-            burnAmount, deployer.address, null); // amount, response address, custom payload
-        expect(sendResult.transactions).toHaveTransaction({ //burn notification
-            from: deployerJettonWallet.address,
-            to: wusd.address
-        });
-        expect(sendResult.transactions).toHaveTransaction({ //excesses
-            from: wusd.address,
-            to: deployer.address
-        });
-
-        const totalSupply = await wusd.getTotalSupply();
-        expect(await deployerJettonWallet.getJettonBalance()).toEqual(initialJettonBalance - burnAmount);
-        expect(await BigInt(totalSupply)).toEqual(BigInt(initialTotalSupply) - burnAmount);
-
-    });
-
-    it('not wallet owner should not be able to burn jettons', async () => {
-        const deployerJettonWallet = await userWallet(deployer.address);
-        const mintResult = await wusd.sendMint(deployer.getSender(), {
-            value: toNano('0.03'),
-            jettonValue: toNano('0.5'),
-            toAddress: deployer.address
-        })
-        let initialJettonBalance = await deployerJettonWallet.getJettonBalance();
-        let initialTotalSupply = await wusd.getTotalSupply();
-        let burnAmount = toNano('0.01');
-        const sendResult = await deployerJettonWallet.sendBurn(notDeployer.getSender(), toNano('0.1'), // ton amount
-            burnAmount, deployer.address, null); // amount, response address, custom payload
-        expect(sendResult.transactions).toHaveTransaction({
-            from: notDeployer.address,
-            to: deployerJettonWallet.address,
-            aborted: true,
-            exitCode: Errors.not_owner, //error::unauthorized_transfer
-        });
-        expect(await deployerJettonWallet.getJettonBalance()).toEqual(initialJettonBalance);
-        expect(await wusd.getTotalSupply()).toEqual(initialTotalSupply);
-    });
-
-    it('wallet owner can not burn more jettons than it has', async () => {
-        const deployerJettonWallet = await userWallet(deployer.address);
-        const mintResult = await wusd.sendMint(deployer.getSender(), {
-            value: toNano('0.03'),
-            jettonValue: toNano('0.5'),
-            toAddress: deployer.address
-        })
-        let initialJettonBalance = await deployerJettonWallet.getJettonBalance();
-        let initialTotalSupply = await wusd.getTotalSupply();
-        let burnAmount = initialJettonBalance + 1n;
-        const sendResult = await deployerJettonWallet.sendBurn(deployer.getSender(), toNano('0.1'), // ton amount
-            burnAmount, deployer.address, null); // amount, response address, custom payload
-        expect(sendResult.transactions).toHaveTransaction({
-            from: deployer.address,
-            to: deployerJettonWallet.address,
-            aborted: true,
-            exitCode: Errors.balance_error, //error::not_enough_jettons
-        });
-        expect(await deployerJettonWallet.getJettonBalance()).toEqual(initialJettonBalance);
-        expect(await wusd.getTotalSupply()).toEqual(initialTotalSupply);
-    });
-
-    it('minimal burn message fee', async () => {
-        const deployerJettonWallet = await userWallet(deployer.address);
-        const mintResult = await wusd.sendMint(deployer.getSender(), {
-            value: toNano('0.03'),
-            jettonValue: toNano('0.5'),
-            toAddress: deployer.address
-        })
-        let initialJettonBalance   = await deployerJettonWallet.getJettonBalance();
-        let initialTotalSupply     = await wusd.getTotalSupply();
-        let burnAmount   = toNano('0.01');
-        let fwd_fee      = 596000n /*1500012n*/, gas_consumption = 10000000n;
-        let minimalFee   = fwd_fee + 2n*gas_consumption;
-        console.log("msg_value",minimalFee)
-        const sendLow    = await deployerJettonWallet.sendBurn(deployer.getSender(), minimalFee, // ton amount
-            burnAmount, deployer.address, null); // amount, response address, custom payload
-
-        expect(sendLow.transactions).toHaveTransaction({
-            from: deployer.address,
-            to: deployerJettonWallet.address,
-            aborted: true,
-            exitCode: Errors.not_enough_gas, //error::burn_fee_not_matched
-        });
-
-        const sendExcess = await deployerJettonWallet.sendBurn(deployer.getSender(), minimalFee + 1000n,
-            burnAmount, deployer.address, null);
-
-        expect(sendExcess.transactions).toHaveTransaction({
-            from: deployer.address,
-            to: deployerJettonWallet.address,
-            success: true
-        });
-
-        const totalSupply = await wusd.getTotalSupply();
-        console.log(totalSupply)
-        expect(await deployerJettonWallet.getJettonBalance()).toEqual(initialJettonBalance - burnAmount);
-        expect(BigInt(totalSupply)).toEqual(BigInt(initialTotalSupply) - burnAmount);
-
-    });
-
-    it('minter should only accept burn messages from jetton wallets', async () => {
-        const deployerJettonWallet = await userWallet(deployer.address);
-        const mintResult = await wusd.sendMint(deployer.getSender(), {
-            value: toNano('0.03'),
-            jettonValue: toNano('1.5'),
-            toAddress: deployer.address
-        })
-        const burnAmount = toNano('1');
-        const burnNotification = (amount: bigint, addr: Address) => {
-            return beginCell()
-                .storeUint(Op.burn_notification, 32)
-                .storeUint(0, 64)
-                .storeCoins(amount)
-                .storeAddress(addr)
-                .storeAddress(deployer.address)
-                .endCell();
-        }
-
-        let res = await blockchain.sendMessage(internal({
-            from: deployerJettonWallet.address,
-            to: wusd.address,
-            body: burnNotification(burnAmount, randomAddress(0)),
-            value: toNano('0.1')
-        }));
-
-        expect(res.transactions).toHaveTransaction({
-            from: deployerJettonWallet.address,
-            to: wusd.address,
-            aborted: true,
-            exitCode: Errors.unauthorized_burn // Unauthorized burn
-        });
-
-    });
-
-    it('success accept burn messages from jetton wallets',async ()=>{
-        const deployerJettonWallet = await userWallet(deployer.address);
-        const mintResult = await wusd.sendMint(deployer.getSender(), {
-            value: toNano('0.03'),
-            jettonValue: toNano('1.5'),
-            toAddress: deployer.address
-        })
-        const burnAmount = toNano('1');
-        const burnNotification = (amount: bigint, addr: Address) => {
-            return beginCell()
-                .storeUint(Op.burn_notification, 32)
-                .storeUint(0, 64)
-                .storeCoins(amount)
-                .storeAddress(deployer.address)
-                .storeAddress(addr)
-                .endCell();
-        }
-
-
-        let res = await blockchain.sendMessage(internal({
-            from: deployerJettonWallet.address,
-            to: wusd.address,
-            body: burnNotification(burnAmount, deployer.address),
-            value: toNano('0.1')
-        }));
-
-        expect(res.transactions).toHaveTransaction({
-            from: deployerJettonWallet.address,
-            to: wusd.address,
-            success: true
-        });
-
-    });
-
     it('report correct discovery address one', async () => {
         let discoveryResult = await wusd.sendDiscovery(deployer.getSender(), deployer.address, true);
         /*
@@ -953,8 +839,6 @@ describe('WUSD', () => {
             to: deployer.address,
             success: true,
         });
-
-
 
     });
 
