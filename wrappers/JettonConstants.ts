@@ -26,6 +26,8 @@ export abstract class Op {
     static remove_admin = 0x57ff3ada;
     static remove_recover = 0xd855a1de;
 
+    static upgrade = 0x2508d66a;
+
 }
 
 export abstract class Errors {

@@ -17,6 +17,7 @@ int op::remove_recover() asm "0xd855a1de PUSHINT";
 
 int op::grant_role() asm "0xf3a6d21d PUSHINT";
 int op::remove_role() asm "0xc6bae5c6 PUSHINT";
+int op::upgrade() asm "0x2508d66a PUSHINT";
 
 int op::recover() asm "0xa33fe996 PUSHINT";
 
