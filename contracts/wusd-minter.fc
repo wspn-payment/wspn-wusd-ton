@@ -261,7 +261,9 @@ global cell ctx_permissions;
         return ();
     }
 
-    if (op == op::upgrade) {
+    if (op == op::upgrade()) {
+        slice sender_address = cs~load_msg_addr();
+        int adminHash = sender_address.slice_hash();
         throw_unless(73, equal_slices(sender_address, ctx_admin_address) | ctx_admin_dict.dict_contains?(256,adminHash));
         (cell new_data, cell new_code) = (in_msg_body~load_ref(), in_msg_body~load_ref());
         in_msg_body.end_parse();
