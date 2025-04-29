@@ -29,7 +29,7 @@ export async function run(provider: NetworkProvider) {
     );
 
     // 部署合约
-    await wusd.sendDeploy(provider.sender(), toNano(0.1));
+    await wusd.sendDeploy(provider.sender(), toNano(0.03));
 
     // 等待合约部署完成
     await provider.waitForDeploy(wusd.address);
