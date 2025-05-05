@@ -16,3 +16,4 @@ dist
 Session.vim
 
 .env
+*.key

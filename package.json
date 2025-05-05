@@ -25,6 +25,7 @@
         "typescript": "^5.8.2"
     },
     "dependencies": {
-        "@cobo/cobo-waas2": "^1.14.0"
+        "@cobo/cobo-waas2": "^1.14.0",
+        "@fireblocks/ts-sdk": "^9.0.0"
     }
 }
