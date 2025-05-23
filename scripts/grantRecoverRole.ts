@@ -19,6 +19,4 @@ export async function run(provider: NetworkProvider,args: string[]){
         grantOp: Op.grant_recover
     })
 
-    console.log("grantResult",grantResult)
-
 }

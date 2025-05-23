@@ -263,6 +263,7 @@ describe('WUSD', () => {
             removeOp: Op.remove_burner
         });
 
+        console.log(removeResult)
         expect(removeResult.transactions).toHaveTransaction({
             from:deployer.address,
             to:wusd.address,
